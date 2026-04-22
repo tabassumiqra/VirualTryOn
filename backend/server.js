@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const uploadRoutes = require('./routes/upload');
+const recommendRoutes = require('./routes/recommend');
 const path = require('path');
 
 dotenv.config();
@@ -18,6 +19,7 @@ app.use('/results', express.static(path.join(__dirname, 'results')));
 
 // Routes
 app.use('/api', uploadRoutes);
+app.use('/api', recommendRoutes);
 
 const PORT = process.env.PORT || 5000;
 

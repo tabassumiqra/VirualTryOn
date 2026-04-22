@@ -1,50 +1,58 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import Response
 import uvicorn
-import cv2
-import numpy as np
-from PIL import Image
-import io
-import time
+import os
+import tempfile
+from gradio_client import Client, handle_file
 
 app = FastAPI()
 
+# Initialize the Gradio Client
+client = Client("yisol/IDM-VTON")
+
 def process_virtual_try_on(user_img_bytes: bytes, cloth_img_bytes: bytes) -> bytes:
     """
-    Mock implementation of Virtual Try-On.
-    In a real scenario, this is where you'd run MediaPipe for pose estimation
-    and CP-VTON / HR-VITON to warp out the clothing.
+    Real Virtual Try-On using Hugging Face Space IDM-VTON.
     """
-    # 1. Decode images using OpenCV
-    user_array = np.frombuffer(user_img_bytes, np.uint8)
-    cloth_array = np.frombuffer(cloth_img_bytes, np.uint8)
-    
-    user_cv2 = cv2.imdecode(user_array, cv2.IMREAD_COLOR)
-    cloth_cv2 = cv2.imdecode(cloth_array, cv2.IMREAD_COLOR)
-    
-    if user_cv2 is None or cloth_cv2 is None:
-        raise ValueError("Invalid image formats uploaded.")
-    
-    # 2. Mock Processing - simply overlay a text or apply a basic effect
-    # Resize cloth mask to smaller size
-    cloth_resized = cv2.resize(cloth_cv2, (100, 100))
-    
-    # Put cloth on top-left of user image as a mockup
-    out_img = user_cv2.copy()
-    h, w, _ = out_img.shape
-    if h >= 100 and w >= 100:
-        out_img[0:100, 0:100] = cloth_resized
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_user:
+        temp_user.write(user_img_bytes)
+        user_path = temp_user.name
         
-    # Add a text to indicate it was processed
-    cv2.putText(out_img, "Processed by AI Service", (10, h - 20), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    
-    # 3. Encode back to JPEG/PNG bytes
-    is_success, buffer = cv2.imencode(".png", out_img)
-    if not is_success:
-        raise ValueError("Failed to encode generated image.")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_cloth:
+        temp_cloth.write(cloth_img_bytes)
+        cloth_path = temp_cloth.name
+
+    try:
+        print("Preparing payload for Hugging Face Space IDM-VTON...")
+        dict_val = {"background": handle_file(user_path), "layers": [], "composite": None}
         
-    return buffer.tobytes()
+        print("Processing...")
+        result = client.predict(
+            dict_val,                # dict
+            handle_file(cloth_path), # garm_img
+            "Clothing item",         # garment_des
+            True,                    # is_checked
+            False,                   # is_checked_crop
+            30,                      # denoise_steps
+            42,                      # seed
+            api_name="/tryon"
+        )
+        
+        # Result is a Tuple [Image, Image], extract the generated image path
+        output_image_path = result[0]
+        
+        # Read the generated image bytes
+        with open(output_image_path, "rb") as f:
+            output_bytes = f.read()
+            
+        print("Success!")
+        return output_bytes
+        
+    finally:
+        if os.path.exists(user_path):
+            os.remove(user_path)
+        if os.path.exists(cloth_path):
+            os.remove(cloth_path)
 
 @app.post("/try-on")
 async def try_on_endpoint(userImage: UploadFile = File(...), clothImage: UploadFile = File(...)):
@@ -52,10 +60,7 @@ async def try_on_endpoint(userImage: UploadFile = File(...), clothImage: UploadF
         user_bytes = await userImage.read()
         cloth_bytes = await clothImage.read()
         
-        # Add latency to simulate heavy ML processing
-        print("Received try-on request. Processing...")
-        time.sleep(2)
-        
+        print("Received try-on request.")
         result_bytes = process_virtual_try_on(user_bytes, cloth_bytes)
         
         return Response(content=result_bytes, media_type="image/png")
