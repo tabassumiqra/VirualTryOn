@@ -2,14 +2,29 @@ import React, { useState } from 'react';
 
 const Recommend = () => {
   const [formData, setFormData] = useState({
-    skinTone: '',
-    bodyType: '',
+    gender: '',
+    season: '',
     occasion: '',
     stylePreference: ''
   });
+  const [userImage, setUserImage] = useState(null);
+  const [userPreview, setUserPreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState('');
+  const [recommendation, setRecommendation] = useState(null);
+  const [visualizedOutfits, setVisualizedOutfits] = useState({});
   const [error, setError] = useState('');
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUserImage(file);
+      setUserPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleVisualize = (idx) => {
+    setVisualizedOutfits(prev => ({...prev, [idx]: true}));
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -20,17 +35,27 @@ const Recommend = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!userImage) {
+      setError('Please upload a photo of yourself.');
+      return;
+    }
     setLoading(true);
     setError('');
-    setRecommendation('');
+    setRecommendation(null);
+    setVisualizedOutfits({});
 
     try {
+      const submitData = new FormData();
+      Object.keys(formData).forEach(key => {
+        submitData.append(key, formData[key]);
+      });
+      if (userImage) {
+        submitData.append('userImage', userImage);
+      }
+
       const response = await fetch('http://localhost:5000/api/recommend', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+        body: submitData
       });
 
       const data = await response.json();
@@ -56,27 +81,45 @@ const Recommend = () => {
 
       <div className="recommend-content">
         <form className="recommend-form card" onSubmit={handleSubmit}>
+          <div className="form-group" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <label>Upload Your Photo</label>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Our AI Stylist will analyze your features automatically to find your best colors!
+            </p>
+            {userPreview ? (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <img src={userPreview} alt="User" className="image-preview" style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '50%', marginBottom: '1rem' }} />
+                <button type="button" className="btn btn-secondary" onClick={() => { setUserImage(null); setUserPreview(null); }} style={{ position: 'absolute', bottom: '0', right: '0', padding: '0.5rem' }}>
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <input type="file" accept="image/*" className="upload-input" onChange={handleImageUpload} />
+            )}
+          </div>
+
+          <hr style={{ margin: '1rem 0', borderColor: 'var(--border-color)', opacity: 0.5 }} />
+
           <div className="form-group">
-            <label>Skin Tone</label>
-            <select name="skinTone" value={formData.skinTone} onChange={handleChange} required>
-              <option value="">Select your skin tone</option>
-              <option value="Fair">Fair / Light</option>
-              <option value="Medium">Medium / Olive</option>
-              <option value="Tan">Tan</option>
-              <option value="Deep">Deep / Dark</option>
+            <label>Gender / Identity</label>
+            <select name="gender" value={formData.gender} onChange={handleChange} required>
+              <option value="">Select your gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Non-Binary">Non-Binary</option>
+              <option value="Any">Any / Unisex</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label>Body Type</label>
-            <select name="bodyType" value={formData.bodyType} onChange={handleChange} required>
-              <option value="">Select your body type</option>
-              <option value="Athletic">Athletic</option>
-              <option value="Slim">Slim</option>
-              <option value="Curvy">Curvy / Hourglass</option>
-              <option value="Plus Size">Plus Size</option>
-              <option value="Tall">Tall</option>
-              <option value="Petite">Petite</option>
+            <label>Season / Weather</label>
+            <select name="season" value={formData.season} onChange={handleChange} required>
+              <option value="">Select the season</option>
+              <option value="Spring">Spring</option>
+              <option value="Summer">Summer</option>
+              <option value="Autumn / Fall">Autumn / Fall</option>
+              <option value="Winter">Winter</option>
+              <option value="All Season">All Season</option>
             </select>
           </div>
 
@@ -118,11 +161,60 @@ const Recommend = () => {
               <div className="spinner"></div>
               <p>Analyzing style combinations...</p>
             </div>
-          ) : recommendation ? (
-            <div className="recommendation-text">
-              {recommendation.split('\\n').map((line, idx) => (
-                <p key={idx}>{line}</p>
-              ))}
+          ) : recommendation && recommendation.outfits ? (
+            <div className="recommendation-results">
+              {recommendation.color_palette && recommendation.color_palette.length > 0 && (
+                <div className="color-palette-section">
+                  <h3>Your Recommended Palette</h3>
+                  <div className="palette-container">
+                    {recommendation.color_palette.map((color, idx) => (
+                      <span key={idx} className="color-chip">{color}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="outfits-list">
+                {recommendation.outfits.map((outfit, idx) => (
+                  <div key={idx} className="outfit-card">
+                    <h4>{idx + 1}. {outfit.title}</h4>
+                    <p><strong>Description:</strong> {outfit.description}</p>
+                    <p><strong>Body Type Fit:</strong> {outfit.body_type_reason}</p>
+                    <p><strong>Color Match:</strong> {outfit.color_reason}</p>
+                    <p><strong>Styling Tips:</strong> {outfit.styling_tips}</p>
+                    {outfit.recommended_colors && outfit.recommended_colors.length > 0 && (
+                      <p><strong>Key Colors:</strong> {outfit.recommended_colors.join(', ')}</p>
+                    )}
+                    
+                    <div className="visualize-section">
+                      {!visualizedOutfits[idx] ? (
+                        <button 
+                          type="button"
+                          className="btn btn-secondary visualize-btn" 
+                          onClick={() => handleVisualize(idx)}
+                        >
+                          👁️ Visualize Outfit
+                        </button>
+                      ) : (
+                        <div className="outfit-image-container">
+                          <div className="spinner image-spinner"></div>
+                          <img 
+                            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(`${formData.gender && formData.gender !== 'Any' ? formData.gender : 'A person'} wearing ${outfit.description}, colors: ${outfit.recommended_colors?.join(',')}. High fashion photography, photorealistic, 4k, vogue magazine, clean studio background, perfectly lit, modern fashion style.`)}`}
+                            alt={outfit.title}
+                            className="outfit-image"
+                            onLoad={(e) => {
+                              e.target.style.opacity = 1;
+                              if (e.target.previousSibling) {
+                                e.target.previousSibling.style.display = 'none';
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="empty-state">

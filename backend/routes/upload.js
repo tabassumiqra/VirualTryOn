@@ -4,7 +4,6 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-const TryOnResult = require('../models/TryOnResult');
 
 const router = express.Router();
 
@@ -25,6 +24,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+
 router.post('/try-on', upload.fields([
   { name: 'userImage', maxCount: 1 },
   { name: 'clothImage', maxCount: 1 }
@@ -39,39 +39,29 @@ router.post('/try-on', upload.fields([
 
     // Call Python Microservice
     const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000/try-on';
-    
-    const formData = new FormData();
-    formData.append('userImage', fs.createReadStream(userImagePath));
-    formData.append('clothImage', fs.createReadStream(clothImagePath));
+    const garmentDesc = req.body.garmentDescription || 'Clothing item';
 
     try {
+      // --- PASS 1: Apply User-Uploaded Garment ---
+      const formData = new FormData();
+      formData.append('userImage', fs.createReadStream(userImagePath));
+      formData.append('clothImage', fs.createReadStream(clothImagePath));
+      formData.append('garmentDescription', garmentDesc);
+
+      console.log(`Executing Try-On for: ${garmentDesc}`);
       const aiResponse = await axios.post(aiServiceUrl, formData, {
         headers: {
           ...formData.getHeaders()
         },
-        responseType: 'arraybuffer' // We expect an image file back
+        responseType: 'arraybuffer'
       });
 
-      // Save the generated image
+      // Save the final generated image
       const resultFileName = `result-${Date.now()}.png`;
       const resultPath = path.join(resultsDir, resultFileName);
       fs.writeFileSync(resultPath, aiResponse.data);
 
-      const userImageUrl = `/uploads/${path.basename(userImagePath)}`;
-      const clothImageUrl = `/uploads/${path.basename(clothImagePath)}`;
       const resultImageUrl = `/results/${resultFileName}`;
-
-      // Save to database
-      try {
-        const tryOnResult = new TryOnResult({
-          userImage: userImageUrl,
-          clothImage: clothImageUrl,
-          resultImage: resultImageUrl,
-        });
-        await tryOnResult.save();
-      } catch (dbError) {
-        console.error('Failed to save to database (ignoring error):', dbError.message);
-      }
 
       res.status(200).json({
         success: true,
@@ -90,13 +80,8 @@ router.post('/try-on', upload.fields([
 
 // Endpoint to fetch history
 router.get('/history', async (req, res) => {
-  try {
-    const results = await TryOnResult.find().sort({ createdAt: -1 });
-    res.status(200).json(results);
-  } catch (error) {
-    console.error('DB Error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch history' });
-  }
+  // Database has been removed, returning empty array
+  res.status(200).json([]);
 });
 
 module.exports = router;

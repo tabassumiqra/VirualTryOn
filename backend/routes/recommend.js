@@ -1,41 +1,118 @@
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const multer = require('multer');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+router.post('/recommend', upload.single('userImage'), async (req, res) => {
+  const { occasion, stylePreference, gender, season } = req.body;
 
-router.post('/recommend', async (req, res) => {
-  const { skinTone, bodyType, occasion, stylePreference } = req.body;
+  // Image is mandatory
+  if (!req.file) {
+    return res.status(400).json({ error: 'Please upload a photo of yourself.' });
+  }
 
-  if (!skinTone || !bodyType || !occasion) {
-    return res.status(400).json({ error: 'Please provide skin tone, body type, and occasion.' });
+  if (!occasion || !gender || !season) {
+    return res.status(400).json({ error: 'Please provide occasion, gender, and season.' });
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const prompt = `You are a professional fashion stylist AI with expertise in personal styling, color theory, and body proportions.
 
-    const prompt = `You are a professional fashion stylist. A client has provided the following physical traits and event details:
-- Skin Tone: ${skinTone}
-- Body Type: ${bodyType}
+Your task is to generate highly personalized outfit recommendations based on the user's uploaded photo.
+
+User Input:
+- Gender / Style Preference: ${gender} - ${stylePreference || 'Any'}
 - Occasion: ${occasion}
-- Style Preference: ${stylePreference || 'Surprise me'}
+- Season / Weather: ${season}
 
-Based on this information, suggest ONE incredible outfit. 
-Include:
-1. The type of clothes that would flatter their body type for this occasion.
-2. The color palette that best compliments their skin tone.
-3. A brief explanation of why this outfit works.
+The user has provided a photo of themselves.
+1. Analyze the image to accurately determine their skin tone, hair color, and body type (if visible).
+2. Based on their actual features in the image, suggest the best color palette.
 
-Keep the response concise, punchy, and formatted with emojis. Do NOT use markdown.`;
+Instructions:
+1. Suggest exactly 5 outfit ideas tailored to ALL user inputs.
+2. Each outfit must include:
+   - Outfit title
+   - Detailed description (top, bottom, footwear, layering if needed)
+   - Why it suits the body type
+   - Why the colors suit the skin tone
+   - Styling tips (fit, patterns, accessories)
+3. Ensure outfits match the given occasion and season/weather.
+4. Recommend appropriate fabrics (e.g., cotton for summer, wool for winter).
+5. Suggest a color palette (5–7 colors) that complements the user's skin tone and style preference.
+6. Keep suggestions modern, practical, and wearable in real life.
+7. Avoid repetition and generic advice.
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+Output Format (STRICTLY FOLLOW):
+{
+  "outfits": [
+    {
+      "title": "",
+      "description": "",
+      "body_type_reason": "",
+      "color_reason": "",
+      "styling_tips": "",
+      "recommended_colors": []
+    }
+  ],
+  "color_palette": []
+}
 
-    res.json({ recommendation: responseText });
+Tone: Professional, stylish, and easy to understand.
+Do not output anything outside of the JSON object. Just return valid JSON.`;
+
+    const modelToUse = "google/gemini-2.5-flash"; // Highly capable and extremely cheap vision model
+    const base64Image = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
+    const imageUrl = `data:${mimeType};base64,${base64Image}`;
+    
+    const messages = [
+      { 
+        "role": "user", 
+        "content": [
+          { "type": "text", "text": prompt },
+          { "type": "image_url", "image_url": { "url": imageUrl } }
+        ] 
+      }
+    ];
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "Virtual Try-On App",
+      },
+      body: JSON.stringify({
+        "model": modelToUse,
+        "messages": messages,
+        "max_tokens": 2500
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Unknown OpenRouter Error");
+    }
+
+    const data = await response.json();
+    let responseText = data.choices[0].message.content;
+    
+    // Clean up potential markdown formatting block for JSON
+    responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    try {
+      const parsedRecommendation = JSON.parse(responseText);
+      res.json({ recommendation: parsedRecommendation });
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', responseText);
+      res.status(500).json({ error: 'AI returned invalid data format.' });
+    }
   } catch (error) {
-    console.error('Error generating recommendation:', error);
-    res.status(500).json({ error: 'Failed to generate recommendation. Make sure GEMINI_API_KEY is configured in backend/.env' });
+    console.error('Error generating recommendation:', error.message);
+    res.status(500).json({ error: `AI Error: ${error.message}` });
   }
 });
 

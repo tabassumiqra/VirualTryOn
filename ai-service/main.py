@@ -10,7 +10,7 @@ app = FastAPI()
 # Initialize the Gradio Client
 client = Client("yisol/IDM-VTON")
 
-def process_virtual_try_on(user_img_bytes: bytes, cloth_img_bytes: bytes) -> bytes:
+def process_virtual_try_on(user_img_bytes: bytes, cloth_img_bytes: bytes, garment_des: str = "Clothing item") -> bytes:
     """
     Real Virtual Try-On using Hugging Face Space IDM-VTON.
     """
@@ -30,9 +30,9 @@ def process_virtual_try_on(user_img_bytes: bytes, cloth_img_bytes: bytes) -> byt
         result = client.predict(
             dict_val,                # dict
             handle_file(cloth_path), # garm_img
-            "Clothing item",         # garment_des
+            garment_des,             # garment_des
             True,                    # is_checked
-            False,                   # is_checked_crop
+            True,                    # is_checked_crop (Set to True to prevent weird padding artifacts at the bottom)
             30,                      # denoise_steps
             42,                      # seed
             api_name="/tryon"
@@ -54,14 +54,20 @@ def process_virtual_try_on(user_img_bytes: bytes, cloth_img_bytes: bytes) -> byt
         if os.path.exists(cloth_path):
             os.remove(cloth_path)
 
+from fastapi import Form
+
 @app.post("/try-on")
-async def try_on_endpoint(userImage: UploadFile = File(...), clothImage: UploadFile = File(...)):
+async def try_on_endpoint(
+    userImage: UploadFile = File(...), 
+    clothImage: UploadFile = File(...),
+    garmentDescription: str = Form("Clothing item")
+):
     try:
         user_bytes = await userImage.read()
         cloth_bytes = await clothImage.read()
         
-        print("Received try-on request.")
-        result_bytes = process_virtual_try_on(user_bytes, cloth_bytes)
+        print(f"Received try-on request. Garment: {garmentDescription}")
+        result_bytes = process_virtual_try_on(user_bytes, cloth_bytes, garmentDescription)
         
         return Response(content=result_bytes, media_type="image/png")
     

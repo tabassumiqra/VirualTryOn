@@ -399,3 +399,142 @@ h1, h2, h3, h4, h5, h6 {
   color: #f87171;
   margin-bottom: 1rem;
 }
+
+/* --- AI Stylist Result Styling --- */
+.recommendation-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.color-palette-section {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.color-palette-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.palette-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.color-chip {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #e2e8f0;
+  font-weight: 500;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.color-chip:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.4);
+}
+
+.outfits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.outfit-card {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.outfit-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.outfit-card h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #a78bfa;
+  font-size: 1.25rem;
+}
+
+.outfit-card p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.outfit-card p:last-child {
+  margin-bottom: 0;
+}
+
+.outfit-card strong {
+  color: #e2e8f0;
+}
+
+
+/* --- Outfit Visualization --- */
+.visualize-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.visualize-btn {
+  width: 100%;
+  max-width: 300px;
+  background: rgba(167, 139, 250, 0.1);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  transition: all 0.3s ease;
+}
+
+.visualize-btn:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: #a78bfa;
+  transform: translateY(-2px);
+}
+
+.outfit-image-container {
+  width: 100%;
+  height: 400px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.outfit-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.image-spinner {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: #a78bfa transparent transparent transparent;
+}
+

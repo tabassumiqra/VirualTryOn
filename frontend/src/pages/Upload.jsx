@@ -60,6 +60,7 @@ export default function UploadPage() {
     const formData = new FormData();
     formData.append('userImage', userImage);
     formData.append('clothImage', clothImage);
+    formData.append('garmentDescription', 'Clothing item');
 
     try {
       const response = await axios.post('http://localhost:5000/api/try-on', formData, {
