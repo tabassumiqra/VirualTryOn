@@ -147,8 +147,8 @@ const Recommend = () => {
             />
           </div>
 
-          <button type="submit" className="upload-btn" disabled={loading}>
-            {loading ? 'Consulting AI...' : 'Get Stylist Recommendation'}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }} disabled={loading}>
+            {loading ? 'Consulting AI Stylist...' : '✨ Get Stylist Recommendation ✨'}
           </button>
         </form>
 
@@ -196,17 +196,21 @@ const Recommend = () => {
                           👁️ Visualize Outfit
                         </button>
                       ) : (
-                        <div className="outfit-image-container">
-                          <div className="spinner image-spinner"></div>
+                        <div className="outfit-image-container" style={{ flexDirection: 'column', textAlign: 'center' }}>
+                          <div className="spinner image-spinner" style={{ position: 'relative', marginBottom: '1rem' }}></div>
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '80%' }}>
+                            Generating AI fashion photo...<br/>
+                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>(This usually takes 15-30 seconds)</span>
+                          </p>
                           <img 
                             src={`https://image.pollinations.ai/prompt/${encodeURIComponent(`${formData.gender && formData.gender !== 'Any' ? formData.gender : 'A person'} wearing ${outfit.description}, colors: ${outfit.recommended_colors?.join(',')}. High fashion photography, photorealistic, 4k, vogue magazine, clean studio background, perfectly lit, modern fashion style.`)}`}
                             alt={outfit.title}
                             className="outfit-image"
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                             onLoad={(e) => {
                               e.target.style.opacity = 1;
-                              if (e.target.previousSibling) {
-                                e.target.previousSibling.style.display = 'none';
-                              }
+                              const siblings = e.target.parentElement.querySelectorAll('div, p');
+                              siblings.forEach(node => node.style.display = 'none');
                             }}
                           />
                         </div>
