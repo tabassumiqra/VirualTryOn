@@ -11,7 +11,6 @@ const Recommend = () => {
   const [userPreview, setUserPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState(null);
-  const [visualizedOutfits, setVisualizedOutfits] = useState({});
   const [error, setError] = useState('');
 
   const handleImageUpload = (e) => {
@@ -20,10 +19,6 @@ const Recommend = () => {
       setUserImage(file);
       setUserPreview(URL.createObjectURL(file));
     }
-  };
-
-  const handleVisualize = (idx) => {
-    setVisualizedOutfits(prev => ({...prev, [idx]: true}));
   };
 
   const handleChange = (e) => {
@@ -42,7 +37,6 @@ const Recommend = () => {
     setLoading(true);
     setError('');
     setRecommendation(null);
-    setVisualizedOutfits({});
 
     try {
       const submitData = new FormData();
@@ -186,36 +180,7 @@ const Recommend = () => {
                       <p><strong>Key Colors:</strong> {outfit.recommended_colors.join(', ')}</p>
                     )}
                     
-                    <div className="visualize-section">
-                      {!visualizedOutfits[idx] ? (
-                        <button 
-                          type="button"
-                          className="btn btn-secondary visualize-btn" 
-                          onClick={() => handleVisualize(idx)}
-                        >
-                          👁️ Visualize Outfit
-                        </button>
-                      ) : (
-                        <div className="outfit-image-container" style={{ flexDirection: 'column', textAlign: 'center' }}>
-                          <div className="spinner image-spinner" style={{ position: 'relative', marginBottom: '1rem' }}></div>
-                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '80%' }}>
-                            Generating AI fashion photo...<br/>
-                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>(This usually takes 15-30 seconds)</span>
-                          </p>
-                          <img 
-                            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(`${formData.gender && formData.gender !== 'Any' ? formData.gender : 'A person'} wearing ${outfit.description}, colors: ${outfit.recommended_colors?.join(',')}. High fashion photography, photorealistic, 4k, vogue magazine, clean studio background, perfectly lit, modern fashion style.`)}`}
-                            alt={outfit.title}
-                            className="outfit-image"
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                            onLoad={(e) => {
-                              e.target.style.opacity = 1;
-                              const siblings = e.target.parentElement.querySelectorAll('div, p');
-                              siblings.forEach(node => node.style.display = 'none');
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
+
                   </div>
                 ))}
               </div>
